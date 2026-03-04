@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import { useWebHaptics } from 'web-haptics/react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -42,6 +43,7 @@ function BratGenerator() {
   const getRandomSongLine = () =>
     charliSongLines[Math.floor(Math.random() * charliSongLines.length)];
 
+  const { trigger } = useWebHaptics();
   const [bratText, setBratText] = useState(getRandomSongLine());
   const [selectedPreset, setSelectedPreset] = useState<ColorPreset>(
     colorPresets[1]
@@ -82,7 +84,7 @@ function BratGenerator() {
         <CardContent>
           <Tabs
             value={activeTab}
-            onValueChange={setActiveTab}
+            onValueChange={(v) => { trigger('selection'); setActiveTab(v); }}
             className='w-full'
           >
             <TabsList className='mb-4 grid w-full grid-cols-2 rounded-md bg-muted p-1'>

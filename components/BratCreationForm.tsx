@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { useWebHaptics } from 'web-haptics/react';
 import {
   Select,
   SelectContent,
@@ -29,6 +30,7 @@ function BratCreationForm({
   setSelectedPreset,
   updateQueryParams,
 }: BratCreationFormProps) {
+  const { trigger } = useWebHaptics();
   const bratBoxRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +119,7 @@ function BratCreationForm({
           </SelectContent>
         </Select>
         <Button
-          onClick={handleDownload}
+          onClick={() => { trigger('success'); handleDownload(); }}
           variant='secondary'
           className='w-full sm:w-[180px]'
         >

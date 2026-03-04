@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useWebHaptics } from 'web-haptics/react';
 import {
   Select,
   SelectContent,
@@ -94,6 +95,7 @@ function BratLrcPlayer({
   selectedPreset,
   setSelectedPreset,
 }: BratLrcPlayerProps) {
+  const { trigger } = useWebHaptics();
   const bratBoxRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -511,7 +513,7 @@ function BratLrcPlayer({
         <Button
           size='sm'
           variant='outline'
-          onClick={handleReset}
+          onClick={() => { trigger('light'); handleReset(); }}
           title='Reset'
           disabled={isExporting}
         >
@@ -520,7 +522,7 @@ function BratLrcPlayer({
         <Button
           size='sm'
           variant='outline'
-          onClick={handleSkipBack}
+          onClick={() => { trigger('light'); handleSkipBack(); }}
           title='Previous line'
           disabled={isExporting}
         >
@@ -528,7 +530,7 @@ function BratLrcPlayer({
         </Button>
         <Button
           size='sm'
-          onClick={isPlaying ? handlePause : handlePlay}
+          onClick={() => { trigger('medium'); (isPlaying ? handlePause : handlePlay)(); }}
           className='h-10 w-10 rounded-full'
           disabled={!parsedLrc || parsedLrc.lines.length === 0 || isExporting}
         >
@@ -541,7 +543,7 @@ function BratLrcPlayer({
         <Button
           size='sm'
           variant='outline'
-          onClick={handleSkipForward}
+          onClick={() => { trigger('light'); handleSkipForward(); }}
           title='Next line'
           disabled={isExporting}
         >
@@ -550,7 +552,7 @@ function BratLrcPlayer({
         <Button
           size='sm'
           variant='outline'
-          onClick={handleDownload}
+          onClick={() => { trigger('success'); handleDownload(); }}
           title='Download current frame as PNG'
           disabled={isExporting}
         >
@@ -625,7 +627,7 @@ function BratLrcPlayer({
             <Button
               size='sm'
               variant='outline'
-              onClick={exportVideo}
+              onClick={() => { trigger('success'); exportVideo(); }}
               disabled={!parsedLrc || parsedLrc.lines.length === 0}
             >
               <VideoIcon className='mr-1 h-4 w-4' /> Video (.webm)
@@ -633,7 +635,7 @@ function BratLrcPlayer({
             <Button
               size='sm'
               variant='outline'
-              onClick={exportGif}
+              onClick={() => { trigger('success'); exportGif(); }}
               disabled={!parsedLrc || parsedLrc.lines.length === 0}
             >
               <ImageIcon className='mr-1 h-4 w-4' /> GIF
@@ -650,6 +652,7 @@ function BratLrcPlayer({
               <button
                 key={`${line.time}-${index}`}
                 onClick={() => {
+                  trigger('selection');
                   pausedAtRef.current = line.time;
                   activeLineRef.current = index;
                   setCurrentTime(line.time);
@@ -707,7 +710,7 @@ function BratLrcPlayer({
 
         <Button
           variant='outline'
-          onClick={() => setShowInput(!showInput)}
+          onClick={() => { trigger('light'); setShowInput(!showInput); }}
           className='w-full sm:w-[180px]'
         >
           <FileTextIcon className='mr-2 h-4 w-4' />
@@ -717,7 +720,7 @@ function BratLrcPlayer({
         <div className='flex w-full gap-2 sm:w-auto'>
           <Button
             variant='secondary'
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => { trigger('light'); fileInputRef.current?.click(); }}
             className='flex-1 sm:w-auto'
           >
             <UploadIcon className='mr-2 h-4 w-4' /> Upload .lrc
@@ -750,7 +753,7 @@ function BratLrcPlayer({
                 <Button
                   variant='ghost'
                   size='sm'
-                  onClick={handleLoadSample}
+                  onClick={() => { trigger('light'); handleLoadSample(); }}
                   className='text-xs'
                 >
                   Load Sample
