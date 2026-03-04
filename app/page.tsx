@@ -20,6 +20,7 @@ import { ColorPreset, colorPresets } from '@/lib/types';
 import SavedCreations from '@/components/SavedCreations';
 import { id } from '@instantdb/core';
 import BratCreationForm from '@/components/BratCreationForm';
+import BratLrcPlayer from '@/components/BratLrcPlayer';
 import TopBrats from '@/components/TopBrats';
 
 export default function BratGenerator() {
@@ -204,12 +205,18 @@ export default function BratGenerator() {
               onValueChange={setActiveTab}
               className='w-full'
             >
-              <TabsList className='mb-4 grid w-full grid-cols-3 rounded-md bg-muted p-1'>
+              <TabsList className='mb-4 grid w-full grid-cols-4 rounded-md bg-muted p-1'>
                 <TabsTrigger
                   value='create'
                   className='transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm'
                 >
                   Create
+                </TabsTrigger>
+                <TabsTrigger
+                  value='lrc'
+                  className='transition-all duration-200 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm'
+                >
+                  LRC Cover
                 </TabsTrigger>
                 <TabsTrigger
                   value='saved'
@@ -224,7 +231,7 @@ export default function BratGenerator() {
                   Top BRATs
                 </TabsTrigger>
               </TabsList>
-              <div className='h-[800px] overflow-hidden'>
+              <div className='min-h-[800px] overflow-hidden'>
                 <TabsContent value='create' className='h-full'>
                   <BratCreationForm
                     bratText={bratText}
@@ -232,6 +239,12 @@ export default function BratGenerator() {
                     selectedPreset={selectedPreset}
                     setSelectedPreset={setSelectedPreset}
                     updateQueryParams={updateQueryParams}
+                  />
+                </TabsContent>
+                <TabsContent value='lrc' className='h-full'>
+                  <BratLrcPlayer
+                    selectedPreset={selectedPreset}
+                    setSelectedPreset={setSelectedPreset}
                   />
                 </TabsContent>
                 <TabsContent value='saved' className='h-full overflow-y-auto'>
