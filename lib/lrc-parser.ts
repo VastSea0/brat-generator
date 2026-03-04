@@ -123,6 +123,32 @@ export function getLrcDuration(lines: LrcLine[]): number {
 }
 
 /**
+ * Get the display text (word-by-word) for a given time in ms
+ */
+export function getTextAtTime(lines: LrcLine[], timeMs: number): string {
+  const idx = getActiveLine(lines, timeMs);
+  if (idx < 0) return '';
+  const line = lines[idx];
+  if (!line.text) return '';
+
+  const lineStart = line.time;
+  const nextLine = lines[idx + 1];
+  const lineEnd = nextLine ? nextLine.time : lineStart + 4000;
+  const lineDuration = lineEnd - lineStart;
+  const words = line.text.split(/\s+/).filter(Boolean);
+  const totalWords = words.length;
+  if (totalWords === 0) return '';
+
+  const elapsedInLine = timeMs - lineStart;
+  const wordInterval = lineDuration / totalWords;
+  const wordsToShow = Math.min(
+    totalWords,
+    Math.max(1, Math.floor(elapsedInLine / wordInterval) + 1)
+  );
+  return words.slice(0, wordsToShow).join(' ');
+}
+
+/**
  * Format milliseconds to mm:ss display
  */
 export function formatTime(ms: number): string {

@@ -23,7 +23,21 @@ import BratCreationForm from '@/components/BratCreationForm';
 import BratLrcPlayer from '@/components/BratLrcPlayer';
 import TopBrats from '@/components/TopBrats';
 
-export default function BratGenerator() {
+export default function Page() {
+  return (
+    <Suspense
+      fallback={
+        <div className='flex h-screen items-center justify-center'>
+          Loading...
+        </div>
+      }
+    >
+      <BratGenerator />
+    </Suspense>
+  );
+}
+
+function BratGenerator() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -62,6 +76,9 @@ export default function BratGenerator() {
   });
   const { user } = db.useAuth();
 
+  const bratCreations = data?.bratCreations ?? [];
+  const votes = data?.votes ?? [];
+
   useEffect(() => {
     const textFromQuery = searchParams.get('text');
     if (textFromQuery) {
@@ -96,7 +113,7 @@ export default function BratGenerator() {
       return;
     }
 
-    const existingVote = data?.votes.find(
+    const existingVote = votes.find(
       (vote) =>
         vote.bratCreationId === creationId && vote.createdUserId === user.id
     );
@@ -152,24 +169,6 @@ export default function BratGenerator() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className='flex h-screen items-center justify-center'>
-        Loading...
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className='flex h-screen items-center justify-center'>
-        Error: {error.message}
-      </div>
-    );
-  }
-
-  const { bratCreations, votes } = data;
-
   const sortedByDate = [...bratCreations].sort(
     (a, b) => b.createdAt - a.createdAt
   );
@@ -187,18 +186,11 @@ export default function BratGenerator() {
   });
 
   return (
-    <Suspense
-      fallback={
-        <div className='flex h-screen items-center justify-center'>
-          Loading...
-        </div>
-      }
-    >
-      <div className='flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground'>
-        <Card className='w-full max-w-4xl'>
-          <CardHeader>
-            <CardTitle>BRAT Generator</CardTitle>
-          </CardHeader>
+    <div className='flex min-h-screen flex-col items-center justify-center bg-background p-4 text-foreground'>
+      <Card className='w-full max-w-4xl'>
+        <CardHeader>
+          <CardTitle>BRAT Generator</CardTitle>
+        </CardHeader>
           <CardContent>
             <Tabs
               value={activeTab}
@@ -248,24 +240,44 @@ export default function BratGenerator() {
                   />
                 </TabsContent>
                 <TabsContent value='saved' className='h-full overflow-y-auto'>
-                  <SavedCreations
-                    creations={sortedByDate}
-                    votes={votes}
-                    user={user}
-                    handleVote={handleVote}
-                    setBratText={setBratText}
-                    setSelectedPreset={setSelectedPreset}
-                    setActiveTab={setActiveTab}
-                    updateQueryParams={updateQueryParams}
-                  />
+                  {isLoading ? (
+                    <div className='flex h-40 items-center justify-center text-muted-foreground'>
+                      Loading creations...
+                    </div>
+                  ) : error ? (
+                    <div className='flex h-40 items-center justify-center text-destructive'>
+                      Error: {error.message}
+                    </div>
+                  ) : (
+                    <SavedCreations
+                      creations={sortedByDate}
+                      votes={votes}
+                      user={user}
+                      handleVote={handleVote}
+                      setBratText={setBratText}
+                      setSelectedPreset={setSelectedPreset}
+                      setActiveTab={setActiveTab}
+                      updateQueryParams={updateQueryParams}
+                    />
+                  )}
                 </TabsContent>
                 <TabsContent value='top' className='h-full overflow-y-auto'>
-                  <TopBrats
-                    creations={sortedByLikes}
-                    votes={votes}
-                    user={user}
-                    handleVote={handleVote}
-                  />
+                  {isLoading ? (
+                    <div className='flex h-40 items-center justify-center text-muted-foreground'>
+                      Loading top brats...
+                    </div>
+                  ) : error ? (
+                    <div className='flex h-40 items-center justify-center text-destructive'>
+                      Error: {error.message}
+                    </div>
+                  ) : (
+                    <TopBrats
+                      creations={sortedByLikes}
+                      votes={votes}
+                      user={user}
+                      handleVote={handleVote}
+                    />
+                  )}
                 </TabsContent>
               </div>
             </Tabs>
@@ -348,6 +360,5 @@ export default function BratGenerator() {
           </DialogContent>
         </Dialog>
       </div>
-    </Suspense>
   );
 }
