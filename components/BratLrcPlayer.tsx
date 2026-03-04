@@ -21,7 +21,7 @@ import {
   SkipBackIcon,
   SkipForwardIcon,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ColorPreset, colorPresets } from '@/lib/types';
 import {
   parseLrc,
@@ -57,6 +57,8 @@ function BratLrcPlayer({
   const [activeLineIndex, setActiveLineIndex] = useState(-1);
   const [showInput, setShowInput] = useState(false);
   const [displayText, setDisplayText] = useState('');
+  const [visibleWordCount, setVisibleWordCount] = useState(0);
+  const [currentLineWords, setCurrentLineWords] = useState<string[]>([]);
 
   // Parse LRC content whenever it changes
   useEffect(() => {
@@ -67,6 +69,8 @@ function BratLrcPlayer({
       setActiveLineIndex(-1);
       setIsPlaying(false);
       setDisplayText(parsed.metadata.title || '');
+      setVisibleWordCount(0);
+      setCurrentLineWords([]);
       pausedAtRef.current = 0;
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -104,7 +108,34 @@ function BratLrcPlayer({
     if (newIndex !== activeLineIndex) {
       setActiveLineIndex(newIndex);
       if (newIndex >= 0 && parsedLrc.lines[newIndex].text) {
-        setDisplayText(parsedLrc.lines[newIndex].text);
+        const words = parsedLrc.lines[newIndex].text.split(/\s+/).filter(Boolean);
+        setCurrentLineWords(words);
+        setVisibleWordCount(0);
+      } else {
+        setCurrentLineWords([]);
+        setVisibleWordCount(0);
+        setDisplayText('');
+      }
+    }
+
+    // Word-by-word reveal: distribute words evenly across the line duration
+    if (newIndex >= 0 && parsedLrc.lines[newIndex]?.text) {
+      const lineStart = parsedLrc.lines[newIndex].time;
+      const nextLine = parsedLrc.lines[newIndex + 1];
+      const lineEnd = nextLine ? nextLine.time : lineStart + 4000;
+      const lineDuration = lineEnd - lineStart;
+      const words = parsedLrc.lines[newIndex].text.split(/\s+/).filter(Boolean);
+      const totalWords = words.length;
+
+      if (totalWords > 0) {
+        const elapsedInLine = elapsed - lineStart;
+        const wordInterval = lineDuration / totalWords;
+        const wordsToShow = Math.min(
+          totalWords,
+          Math.floor(elapsedInLine / wordInterval) + 1
+        );
+        setVisibleWordCount(wordsToShow);
+        setDisplayText(words.slice(0, wordsToShow).join(' '));
       }
     }
 
@@ -248,28 +279,21 @@ function BratLrcPlayer({
         className='relative mb-4 flex aspect-square w-full max-w-md items-center justify-center overflow-hidden shadow-lg'
         style={{ backgroundColor: selectedPreset.backgroundColor }}
       >
-        <AnimatePresence mode='wait'>
-          <motion.div
-            key={displayText}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.1 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            ref={displayRef}
-            className='absolute inset-0 z-10 flex h-full w-full items-center justify-center overflow-hidden text-center text-4xl'
-            style={{
-              color: selectedPreset.textColor,
-              fontWeight: 'bold',
-              fontFamily: 'arialnarrow, Arial Narrow, Arial, sans-serif',
-              lineHeight: 1.2,
-              padding: '20px',
-              filter: 'blur(1.7px)',
-              whiteSpace: 'pre-wrap',
-            }}
-          >
-            {displayText || (parsedLrc?.metadata.title ?? 'Load an LRC file')}
-          </motion.div>
-        </AnimatePresence>
+        <div
+          ref={displayRef}
+          className='absolute inset-0 z-10 flex h-full w-full items-center justify-center overflow-hidden text-center text-4xl'
+          style={{
+            color: selectedPreset.textColor,
+            fontWeight: 'bold',
+            fontFamily: 'arialnarrow, Arial Narrow, Arial, sans-serif',
+            lineHeight: 1.2,
+            padding: '20px',
+            filter: 'blur(1.7px)',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {displayText || (parsedLrc?.metadata.title ?? 'Load an LRC file')}
+        </div>
       </div>
 
       {/* Transport Controls */}
