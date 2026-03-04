@@ -1,8 +1,3 @@
-export type Schema = {
-  bratCreations: BratCreation;
-  votes: Vote;
-};
-
 export interface ColorPreset {
   label: string;
   value: string;
@@ -78,24 +73,3 @@ export const colorPresets: ColorPreset[] = [
     backgroundColor: '#000000',
   },
 ];
-
-export interface BratCreation {
-  id: string;
-  text: string;
-  preset: string;
-  createdAt: number;
-  createdBy: string;
-}
-
-export interface Vote {
-  id: string;
-  createdUserId: string;
-  createdAt: number;
-  bratCreationId: string;
-  orientation: 'upvote' | 'downvote';
-}
-
-export interface User {
-  id: string;
-  email: string;
-}

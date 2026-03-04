@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import {
   Select,
   SelectContent,
@@ -9,17 +9,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { DownloadIcon, CloudIcon, CheckCircleIcon } from 'lucide-react';
+import { DownloadIcon } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ColorPreset, colorPresets } from '@/lib/types';
-import { db } from '@/lib/db';
-import { tx } from '@instantdb/react';
-import { id } from '@instantdb/core';
-import dynamic from 'next/dynamic';
 import { toPng } from 'html-to-image';
-
-const ReactConfetti = dynamic(() => import('react-confetti'), { ssr: false });
 
 interface BratCreationFormProps {
   bratText: string;
@@ -38,9 +31,6 @@ function BratCreationForm({
 }: BratCreationFormProps) {
   const bratBoxRef = useRef<HTMLDivElement>(null);
   const displayRef = useRef<HTMLDivElement>(null);
-  const [showSaveAnimation, setShowSaveAnimation] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [confettiComplete, setConfettiComplete] = useState(false);
 
   useEffect(() => {
     adjustDisplaySize();
@@ -83,43 +73,8 @@ function BratCreationForm({
     }
   };
 
-  const handleSave = () => {
-    const bratCreation = {
-      text: bratText,
-      preset: selectedPreset.value,
-      createdAt: Date.now(),
-    };
-    db.transact(
-      tx.bratCreations[id()].update({
-        ...bratCreation,
-      })
-    );
-
-    setShowSaveAnimation(true);
-    setShowConfetti(true);
-    setConfettiComplete(false);
-
-    setTimeout(() => {
-      setShowSaveAnimation(false);
-    }, 2000);
-  };
-
-  const handleConfettiComplete = () => {
-    setConfettiComplete(true);
-    setShowConfetti(false);
-  };
-
   return (
     <div className='flex flex-col items-center'>
-      {showConfetti && !confettiComplete && (
-        <ReactConfetti
-          width={window.innerWidth}
-          height={window.innerHeight}
-          recycle={false}
-          numberOfPieces={200}
-          onConfettiComplete={handleConfettiComplete}
-        />
-      )}
       <div
         ref={bratBoxRef}
         className='relative mb-4 flex aspect-[3/4] w-full max-w-md items-center justify-center overflow-hidden shadow-lg'
@@ -161,23 +116,6 @@ function BratCreationForm({
             ))}
           </SelectContent>
         </Select>
-        <div className='relative w-full sm:w-[180px]'>
-          <Button onClick={handleSave} className='w-full'>
-            <CloudIcon className='mr-2 h-4 w-4' /> Upload
-          </Button>
-          <AnimatePresence>
-            {showSaveAnimation && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className='absolute inset-0 flex items-center justify-center rounded-md bg-primary text-primary-foreground'
-              >
-                <CheckCircleIcon className='mr-2 h-4 w-4' /> Saved!
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
         <Button
           onClick={handleDownload}
           variant='secondary'
