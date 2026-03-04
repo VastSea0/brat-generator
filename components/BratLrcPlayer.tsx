@@ -30,7 +30,6 @@ import {
   formatTime,
   sampleLrc,
   type ParsedLrc,
-  type LrcLine,
 } from '@/lib/lrc-parser';
 import { toPng } from 'html-to-image';
 
@@ -49,6 +48,8 @@ function BratLrcPlayer({
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedAtRef = useRef<number>(0);
+  const activeLineRef = useRef<number>(-1);
+  const parsedLrcRef = useRef<ParsedLrc | null>(null);
 
   const [lrcContent, setLrcContent] = useState(sampleLrc);
   const [parsedLrc, setParsedLrc] = useState<ParsedLrc | null>(null);
@@ -57,20 +58,18 @@ function BratLrcPlayer({
   const [activeLineIndex, setActiveLineIndex] = useState(-1);
   const [showInput, setShowInput] = useState(false);
   const [displayText, setDisplayText] = useState('');
-  const [visibleWordCount, setVisibleWordCount] = useState(0);
-  const [currentLineWords, setCurrentLineWords] = useState<string[]>([]);
 
   // Parse LRC content whenever it changes
   useEffect(() => {
     if (lrcContent.trim()) {
       const parsed = parseLrc(lrcContent);
       setParsedLrc(parsed);
+      parsedLrcRef.current = parsed;
       setCurrentTime(0);
       setActiveLineIndex(-1);
+      activeLineRef.current = -1;
       setIsPlaying(false);
       setDisplayText(parsed.metadata.title || '');
-      setVisibleWordCount(0);
-      setCurrentLineWords([]);
       pausedAtRef.current = 0;
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -88,12 +87,16 @@ function BratLrcPlayer({
     }
   }, [displayText, selectedPreset]);
 
-  // Animation loop
+  // Animation loop — no state deps, reads everything from refs
+  const lastDisplayTextRef = useRef('');
+  const lastTimeUpdateRef = useRef(0);
+
   const tick = useCallback(() => {
-    if (!parsedLrc || parsedLrc.lines.length === 0) return;
+    const lrc = parsedLrcRef.current;
+    if (!lrc || lrc.lines.length === 0) return;
 
     const elapsed = performance.now() - startTimeRef.current;
-    const duration = getLrcDuration(parsedLrc.lines);
+    const duration = getLrcDuration(lrc.lines);
 
     if (elapsed >= duration) {
       setIsPlaying(false);
@@ -102,29 +105,27 @@ function BratLrcPlayer({
       return;
     }
 
-    setCurrentTime(elapsed);
-    const newIndex = getActiveLine(parsedLrc.lines, elapsed);
+    // Throttle time state updates to ~15fps (every ~66ms) for the seek bar
+    if (elapsed - lastTimeUpdateRef.current > 66) {
+      setCurrentTime(elapsed);
+      lastTimeUpdateRef.current = elapsed;
+    }
+    pausedAtRef.current = elapsed;
 
-    if (newIndex !== activeLineIndex) {
+    const newIndex = getActiveLine(lrc.lines, elapsed);
+
+    if (newIndex !== activeLineRef.current) {
+      activeLineRef.current = newIndex;
       setActiveLineIndex(newIndex);
-      if (newIndex >= 0 && parsedLrc.lines[newIndex].text) {
-        const words = parsedLrc.lines[newIndex].text.split(/\s+/).filter(Boolean);
-        setCurrentLineWords(words);
-        setVisibleWordCount(0);
-      } else {
-        setCurrentLineWords([]);
-        setVisibleWordCount(0);
-        setDisplayText('');
-      }
     }
 
     // Word-by-word reveal: distribute words evenly across the line duration
-    if (newIndex >= 0 && parsedLrc.lines[newIndex]?.text) {
-      const lineStart = parsedLrc.lines[newIndex].time;
-      const nextLine = parsedLrc.lines[newIndex + 1];
+    if (newIndex >= 0 && lrc.lines[newIndex]?.text) {
+      const lineStart = lrc.lines[newIndex].time;
+      const nextLine = lrc.lines[newIndex + 1];
       const lineEnd = nextLine ? nextLine.time : lineStart + 4000;
       const lineDuration = lineEnd - lineStart;
-      const words = parsedLrc.lines[newIndex].text.split(/\s+/).filter(Boolean);
+      const words = lrc.lines[newIndex].text.split(/\s+/).filter(Boolean);
       const totalWords = words.length;
 
       if (totalWords > 0) {
@@ -134,13 +135,20 @@ function BratLrcPlayer({
           totalWords,
           Math.floor(elapsedInLine / wordInterval) + 1
         );
-        setVisibleWordCount(wordsToShow);
-        setDisplayText(words.slice(0, wordsToShow).join(' '));
+        const newText = words.slice(0, wordsToShow).join(' ');
+        // Only update state if text actually changed
+        if (newText !== lastDisplayTextRef.current) {
+          lastDisplayTextRef.current = newText;
+          setDisplayText(newText);
+        }
       }
+    } else if (lastDisplayTextRef.current !== '') {
+      lastDisplayTextRef.current = '';
+      setDisplayText('');
     }
 
     animationRef.current = requestAnimationFrame(tick);
-  }, [parsedLrc, activeLineIndex]);
+  }, []);
 
   // Start/stop animation
   useEffect(() => {
@@ -173,6 +181,7 @@ function BratLrcPlayer({
     setIsPlaying(false);
     setCurrentTime(0);
     setActiveLineIndex(-1);
+    activeLineRef.current = -1;
     pausedAtRef.current = 0;
     if (parsedLrc?.metadata.title) {
       setDisplayText(parsedLrc.metadata.title);
@@ -183,9 +192,10 @@ function BratLrcPlayer({
 
   const handleSkipBack = () => {
     if (!parsedLrc || parsedLrc.lines.length === 0) return;
-    const prevIndex = Math.max(0, activeLineIndex - 1);
+    const prevIndex = Math.max(0, activeLineRef.current - 1);
     const prevTime = parsedLrc.lines[prevIndex]?.time ?? 0;
     pausedAtRef.current = prevTime;
+    activeLineRef.current = prevIndex;
     setCurrentTime(prevTime);
     setActiveLineIndex(prevIndex);
     if (parsedLrc.lines[prevIndex]?.text) {
@@ -198,9 +208,10 @@ function BratLrcPlayer({
 
   const handleSkipForward = () => {
     if (!parsedLrc || parsedLrc.lines.length === 0) return;
-    const nextIndex = Math.min(parsedLrc.lines.length - 1, activeLineIndex + 1);
+    const nextIndex = Math.min(parsedLrc.lines.length - 1, activeLineRef.current + 1);
     const nextTime = parsedLrc.lines[nextIndex]?.time ?? 0;
     pausedAtRef.current = nextTime;
+    activeLineRef.current = nextIndex;
     setCurrentTime(nextTime);
     setActiveLineIndex(nextIndex);
     if (parsedLrc.lines[nextIndex]?.text) {
@@ -217,6 +228,7 @@ function BratLrcPlayer({
     pausedAtRef.current = seekTime;
     setCurrentTime(seekTime);
     const newIndex = getActiveLine(parsedLrc.lines, seekTime);
+    activeLineRef.current = newIndex;
     setActiveLineIndex(newIndex);
     if (newIndex >= 0 && parsedLrc.lines[newIndex]?.text) {
       setDisplayText(parsedLrc.lines[newIndex].text);
@@ -269,7 +281,6 @@ function BratLrcPlayer({
   };
 
   const duration = parsedLrc ? getLrcDuration(parsedLrc.lines) : 0;
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className='flex flex-col items-center'>
@@ -370,6 +381,7 @@ function BratLrcPlayer({
                 key={`${line.time}-${index}`}
                 onClick={() => {
                   pausedAtRef.current = line.time;
+                  activeLineRef.current = index;
                   setCurrentTime(line.time);
                   setActiveLineIndex(index);
                   if (line.text) setDisplayText(line.text);
